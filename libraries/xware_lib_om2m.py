@@ -7,6 +7,65 @@
 import requests
 import re
 import json
+import time
+
+# Global, shared variables
+import xware_globals
+
+# ===========================================
+# Send a message to OM2M via MQTT, and wait for a response of receipt
+
+# Before calling the sendAndWaitMQTT function, you must create an MQTT client
+# to send messages, and assign the onMessageMQTT callback:
+
+#client = mqtt.Client(deviceName, userdata = topicResp)
+#client.on_message = onMessageMQTT
+#client.on_connect = onConnectMQTT
+#client.connect(brokerAddress)
+#client.loop_start()
+
+# Where:
+# deviceName = string name for the target device
+# topicResp = MQTT Response Topic assigned by OM2M
+# brokerAddress = IP address of target MQTT broker
+
+# =======
+# client = MQTT client, created through the mqtt.Client() command
+# topicReq = MQTT Request Topic assigned by OM2M
+# payload = contents of the message, created with one of the other functions on this library
+# waitTime = time between message receipt verifications
+# retryWaitTime = Time between message sent retries
+# maxWaitTime = Maximum time before message sending stops and code exits
+
+def sendAndWaitMQTT(client,topicReq,payload,waitTime,retryWaitTime,maxWaitTime):
+    #global xware_globals.newMessage
+    xware_globals.messageString = ''
+    xware_globals.newMessage = None
+    client.publish(topicReq, payload)
+    retryWaitTimer = time.time()
+    maxWaitTimer = time.time()
+    while not(xware_globals.newMessage):
+        if time.time() - maxWaitTimer > maxWaitTime:
+            print('Error: could not connect to OM2M')
+            exit()
+        if time.time() - retryWaitTimer > retryWaitTime:
+            client.publish(topicReq, payload)
+            retryWaitTimer = time.time()
+        time.sleep(waitTime)
+    xware_globals.newMessage = None
+
+# =======
+
+def onMessageMQTT(client, userdata, msg):
+    #global xware_globals.newMessage
+    #global xware_globals.messageString
+    xware_globals.newMessage = 1
+    xware_globals.messageString = str(msg.payload, 'utf-8')
+
+def onConnectMQTT(client, userdata, flags, rc):
+    # userdata must hold the respective topic
+    client.subscribe(userdata)
+
 
 # ===========================================
 # Create a primitive content MQTT payload for OM2M
@@ -15,7 +74,7 @@ import json
 # for a description of the inputs
 
 # fr = Authentication, in user:password form
-# to = Target
+# to = Target URL
 # op = Operation to perform
 # rqi = Request ID
 # pc = Request contents
@@ -36,6 +95,7 @@ def primitiveContentPayload(fr,to,op,rqi,pc,ty):
 # ===========================================
 # Create an MQTT payload, specifically to create an application
 
+# to = target URL, which is usually '/in-cse/in-name'
 # F,t,T: Sensor frequency, sampling time, period
 # sensor, var: XRepo tags
 # appName: OM2M name for the application
@@ -58,8 +118,20 @@ def createApplicationPayload(auth,to,rqi,F,t,T,valueConversion,deviceTag,sensorT
 
 
 # ===========================================
+# Create an MQTT payload, specifically to delete an application
+# to = target URL, which is usually '/in-cse/in-name/[app name]'
+
+def deleteApplicationPayload(auth,to,rqi):
+    op = '4' # Operation: Delete
+    ty = '2' # Type: Application
+    pc = '""'
+    return primitiveContentPayload(auth,to,op,rqi,pc,ty)
+
+
+# ===========================================
 # Create an MQTT payload, specifically to create a container
-# containerName: OM2M name for the container
+# containerName = OM2M name for the container
+# to = target URL, which is usually '/in-cse/in-name/[app name]/'
 
 def createContainerPayload(auth,to,rqi,containerName):
     op = '1' # Operation: Create
@@ -70,7 +142,8 @@ def createContainerPayload(auth,to,rqi,containerName):
 
 # ===========================================
 # Create an MQTT payload, specifically to create a message
-# message: message contents
+# message = message contents
+# to = target URL, which is usually '/in-cse/in-name/[app name]/[container name]'
 
 def createMessagePayload(auth,to,rqi,message):
     op = '1' # Operation: Create
@@ -81,6 +154,7 @@ def createMessagePayload(auth,to,rqi,message):
 
 # ===========================================
 # Create an MQTT payload, specifically to read a message
+# to = target URL, which is usually '/in-cse/in-name/[app name]/[container name]/[message name]'
 
 def readMessagePayload(auth,to,rqi):
     op = '2' # Operation: Retrieve
@@ -91,7 +165,7 @@ def readMessagePayload(auth,to,rqi):
 
 # ===========================================
 # Create an MQTT payload, specifically to delete a message
-# message: message contents
+# to = target URL, which is usually '/in-cse/in-name/[app name]/[container name]/[message name]'
 
 def deleteMessagePayload(auth,to,rqi):
     op = '4' # Operation: Delete
@@ -121,6 +195,7 @@ def filterCriteriaPayload(fr,to,rqi,ty):
 
 # ===========================================
 # Create an MQTT payload, specifically to find all applications
+# to = target URL, which is usually '/in-cse/in-name'
 
 def searchApplicationsPayload(auth,to,rqi):
     ty = '2' # Type: Application
@@ -129,6 +204,7 @@ def searchApplicationsPayload(auth,to,rqi):
 
 # ===========================================
 # Create an MQTT payload, specifically to find all containers
+# to = target URL, which is usually '/in-cse/in-name/[app name]'
 
 def searchContainersPayload(auth,to,rqi):
     ty = '3' # Type: Application
@@ -137,6 +213,7 @@ def searchContainersPayload(auth,to,rqi):
 
 # ===========================================
 # Create an MQTT payload, specifically to find all messages
+# to = target URL, which is usually '/in-cse/in-name/[app name]/[container name]'
 
 def searchMessagesPayload(auth,to,rqi):
     ty = '4' # Type: Message
@@ -155,7 +232,7 @@ def createMessageREST(auth="admin:admin",ip="127.0.0.1:8080",serverCSE="in-cse",
 
 
 # ===========================================
-# List all OM2M applications
+# List all OM2M applications via HTTP REST
 
 def listApplicationsREST(auth="admin:admin",ip="127.0.0.1:8080",serverCSE="in-cse",serverName="in-name"):
     # Build and send GET
@@ -172,7 +249,7 @@ def listApplicationsREST(auth="admin:admin",ip="127.0.0.1:8080",serverCSE="in-cs
 
 
 # ===========================================
-# List all OM2M messages in a container
+# List all OM2M messages in a container via HTTP REST
 
 def listMessagesREST(auth="admin:admin",ip="127.0.0.1:8080",serverCSE="in-cse",serverName="in-name",appName="",containerName=""):
     # Build and send GET
@@ -189,10 +266,10 @@ def listMessagesREST(auth="admin:admin",ip="127.0.0.1:8080",serverCSE="in-cse",s
 
 
 # ===========================================
-# Read the labels of a specific application
+# Read the labels of a specific application via HTTP REST
 # The output is a dictionary of the labels and their values
 
-def readApplicationLabels(auth="admin:admin",ip="127.0.0.1:8080",serverCSE="in-cse",serverName="in-name",appName=""):
+def readApplicationLabelsREST(auth="admin:admin",ip="127.0.0.1:8080",serverCSE="in-cse",serverName="in-name",appName=""):
     # Build and send GET
     header = {"X-M2M-Origin": auth, "Accept": "application/json"}
     url = "http://"+ip+"/~/"+serverCSE+"/"+serverName+"/"+appName
@@ -214,7 +291,7 @@ def readApplicationLabels(auth="admin:admin",ip="127.0.0.1:8080",serverCSE="in-c
 
 
 # ===========================================
-# Read a specific message from OM2M
+# Read a specific message from OM2M via HTTP REST
 
 def getMessageREST(auth="admin:admin",ip="127.0.0.1:8080",serverCSE="in-cse",serverName="in-name",appName="",containerName="",messageName=""):
     # Build and send GET
@@ -230,7 +307,7 @@ def getMessageREST(auth="admin:admin",ip="127.0.0.1:8080",serverCSE="in-cse",ser
 
 
 # ===========================================
-# Delete a specific message from OM2M
+# Delete a specific message from OM2M via HTTP REST
 
 def deleteMessageREST(auth="admin:admin",ip="127.0.0.1:8080",serverCSE="in-cse",serverName="in-name",appName="",containerName="",messageName=""):
     # Build and send GET

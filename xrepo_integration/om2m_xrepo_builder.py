@@ -124,7 +124,7 @@ while 1:
             valueBuffer = getMessageREST(authOM2M,ipOM2M,serverCSE,serverName,deviceName,containerName,messageName).splitlines()
 
             # Read metadata of this device
-            labels = readApplicationLabels(authOM2M,ipOM2M,serverCSE,serverName,deviceName)
+            labels = readApplicationLabelsREST(authOM2M,ipOM2M,serverCSE,serverName,deviceName)
             F = float(labels['Frequency[Hz]'])
             valueConversion = float(labels['ValueConversion'])
             deviceTag = labels['Device']

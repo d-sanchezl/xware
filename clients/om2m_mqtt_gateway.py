@@ -8,6 +8,7 @@ import time # To time sending intervals
 # Import xware libraries
 from xware_lib_functions import *
 from xware_lib_om2m import *
+import xware_globals
 
 # =================================
 # PARAMETERS
@@ -28,7 +29,7 @@ sensorTag = 'x_accel'
 # MQTT topic name
 deviceName = 'device0'
 # MQTT address, change to target IP address
-brokerAddress = "localhost"
+brokerAddress = '192.138.6.70' # Replace with the IP of the Server as a string
 
 # OM2M names
 serverCSE = 'in-cse'
@@ -48,36 +49,9 @@ retryWaitTime = 1
 maxWaitTime = 6
 
 # =================================
-# FUNCTIONS AND CALLBACKS
+# FUNCTION
 
-def sendAndWaitMQTT(client,topic,payload,waitTime,retryWaitTime,maxWaitTime):
-    global newMessage
-    message = ''
-    newMessage = None
-    client.publish(topic, payload)
-    retryWaitTimer = time.time()
-    maxWaitTimer = time.time()
-    while not(newMessage):
-        if time.time() - maxWaitTimer > maxWaitTime:
-            print('Error: could not connect to OM2M')
-            exit()
-        if time.time() - retryWaitTimer > retryWaitTime:
-            client.publish(topic, payload)
-            retryWaitTimer = time.time()
-        time.sleep(waitTime)
-    newMessage = None
-
-def onConnect(client, userdata, flags, rc):
-    # userdata must hold the respective topic
-    client.subscribe(userdata)
-
-def onMessage(client, userdata, msg):
-    global newMessage
-    global message
-    newMessage = 1
-    message = str(msg.payload, 'utf-8')
-
-# Function: read next TXT line
+# Read next TXT line
 def getValueFromTxt():
     global fileList
     global currentFileIndex
@@ -111,8 +85,8 @@ def getValueFromTxt():
 # SET UP FLAGS AND VARIABLES
 # # globalStartSuccess = 0
 # # startSuccess = 0
-newMessage = None
-message = ''
+xware_globals.newMessage = None
+xware_globals.messageString = ''
 messageIndex = 0
 
 # Simulated Acquisition
@@ -160,8 +134,8 @@ print('')
 #====================
 # MQTT CONNECT TO OM2M
 client = mqtt.Client(deviceName, userdata = topicResp)
-client.on_message = onMessage
-client.on_connect = onConnect
+client.on_message = onMessageMQTT
+client.on_connect = onConnectMQTT
 client.connect(brokerAddress)
 client.loop_start()
 
@@ -172,8 +146,8 @@ payload = searchApplicationsPayload(authOM2M,to_app,'123456')
 # Send message and wait for response
 sendAndWaitMQTT(client,topicReq,payload,waitTime,retryWaitTime,maxWaitTime)
 # Check if this device is in the list
-if json.loads(message)['m2m:rsp']['m2m:pc']['m2m:uril']:
-    apps = lastUrlItem(json.loads(message)['m2m:rsp']['m2m:pc']['m2m:uril']['m2m:uril'])
+if json.loads(xware_globals.messageString)['m2m:rsp']['m2m:pc']['m2m:uril']:
+    apps = lastUrlItem(json.loads(xware_globals.messageString)['m2m:rsp']['m2m:pc']['m2m:uril']['m2m:uril'])
 else: apps = []
 # Otherwise, create app
 if not(deviceName in apps):
@@ -187,8 +161,8 @@ payload = searchContainersPayload(authOM2M,to_cont,'123456')
 # Send message and wait for response
 sendAndWaitMQTT(client,topicReq,payload,waitTime,retryWaitTime,maxWaitTime)
 # Check if this container is in the list
-if json.loads(message)['m2m:rsp']['m2m:pc']['m2m:uril']:
-    containers = lastUrlItem(json.loads(message)['m2m:rsp']['m2m:pc']['m2m:uril']['m2m:uril'])
+if json.loads(xware_globals.messageString)['m2m:rsp']['m2m:pc']['m2m:uril']:
+    containers = lastUrlItem(json.loads(xware_globals.messageString)['m2m:rsp']['m2m:pc']['m2m:uril']['m2m:uril'])
 else: containers = []
 # Otherwise, create container
 if not(containerName in containers):
@@ -237,7 +211,7 @@ while 1:
         # Search for all messages
         payload = searchMessagesPayload(authOM2M,to_events,'123456')
         sendAndWaitMQTT(client,topicReq,payload,waitTime,retryWaitTime,maxWaitTime)
-        obj = json.loads(message)
+        obj = json.loads(xware_globals.messageString)
 
         # If there are messages
         if obj['m2m:rsp']['m2m:pc']:
@@ -248,7 +222,7 @@ while 1:
                 for messageName in messageList:
                     payload = readMessagePayload(authOM2M,to_events+'/'+messageName,'123456')
                     sendAndWaitMQTT(client,topicReq,payload,waitTime,retryWaitTime,maxWaitTime)
-                    obj = json.loads(message)
+                    obj = json.loads(xware_globals.messageString)
                     try:
                         messageText = obj["m2m:rsp"]["m2m:pc"]["m2m:cin"]["con"][1:-1]
                     except:
