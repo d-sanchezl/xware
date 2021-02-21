@@ -18,6 +18,10 @@ csvLocation = '/home/pi/Documents/gateway_buffer'
 # Log files location
 logLocation = '/home/pi/Documents/python'
 
+# CSV storage parameters
+timePrecision = 6
+valuePrecision = 5
+
 # OM2M parameters
 serverCSE = 'in-cse'
 serverName = 'in-name'
@@ -28,10 +32,6 @@ authOM2M = 'admin:admin'
 
 # Wait time between cycles (can be 0)
 waitTime = 0.05
-
-# CSV storage parameters
-timePrecision = 6
-valuePrecision = 5
 
 
 # ======================

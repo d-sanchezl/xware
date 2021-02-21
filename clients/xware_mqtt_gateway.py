@@ -31,15 +31,15 @@ deviceName = 'device0'
 # MQTT address, change to target IP address
 brokerAddress = '192.138.6.70' # Replace with the IP of the Server as a string
 
+# Simulated acquisition folder
+samplesLocation = "/home/pi/Documents/amest_txt_divided"
+
 # OM2M names
 serverCSE = 'in-cse'
 serverName = 'in-name'
 containerName = 'sampling'
 eventsContName = 'events'
 authOM2M = 'admin:admin' # user:password
-
-# Simulated acquisition folder
-samplesLocation = "/home/pi/Documents/amest_txt_divided"
 
 # Time between message receipt verification
 waitTime = 0.1
