@@ -57,6 +57,9 @@ printAndLog('gateway is active',fullLogLoc)
 #====================
 # BEGIN CYCLING
 
+# Indicate first cycle (to delete old apps)
+starting = 1
+
 # Start buffers
 valueBuffer = []
 
@@ -68,6 +71,16 @@ while 1:
     devicesList = lastUrlItem(applicationListUrl)
     # Number of devices
     numOfDevices = len(devicesList)
+
+    # If starting, prompt to delete old apps
+    if starting:
+        if numOfDevices > 0:
+            input('Press Return to delete old OM2M data and continue...')
+            print('')
+            for deviceName in devicesList:
+                deleteApplicationREST(authOM2M,ipOM2M,serverCSE,serverName,deviceName)
+        devicesList = []
+        starting = 0
 
     # Create dictionary entry for devices if necessary
     for deviceName in devicesList:

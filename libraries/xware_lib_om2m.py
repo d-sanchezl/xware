@@ -317,6 +317,16 @@ def deleteMessageREST(auth="admin:admin",ip="127.0.0.1:8080",serverCSE="in-cse",
 
 
 # ===========================================
+# Delete a specific application from OM2M via HTTP REST
+
+def deleteApplicationREST(auth="admin:admin",ip="127.0.0.1:8080",serverCSE="in-cse",serverName="in-name",appName=""):
+    # Build and send GET
+    header = {"X-M2M-Origin": auth, "Accept": "application/json"}
+    url = "http://"+ip+"/~/"+serverCSE+"/"+serverName+"/"+appName
+    response = requests.delete(url, headers=header)
+    
+
+# ===========================================
 # Get the last URL items for a list of URL's
 
 # urlList = single url string or list of url strings

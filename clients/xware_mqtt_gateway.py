@@ -127,6 +127,7 @@ to_events  = '/'+serverCSE+'/'+serverName+'/'+deviceName+'/'+eventsContName
 print('Selected sampling frequency is ' + str(F) + ' Hz')
 print('Selected sampling time is ' + str(t) + ' s')
 print('Selected sampling period is ' + str(T) + ' s')
+print('Make sure that XWare Server is active before starting!') #!!!
 input('Press Return to begin...')
 print('')
 
