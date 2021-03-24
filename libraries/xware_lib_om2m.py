@@ -1,6 +1,6 @@
 # Useful functions for OM2M and MQTT in XWare
 
-# Functions adapted from Jairo Seros' work:
+# Some functions adapted from jairoseros' work:
 # https://github.com/SELF-Software-Evolution-Lab/Adaptive-Architecture-for-Transient-IoT-Systems
 
 # Import necessary packages
