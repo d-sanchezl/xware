@@ -1,4 +1,9 @@
-# OM2M to XRepo
+# OM2M to local storage (csv files)
+# See Github repo (github.com/d-sanchezl/xware) for license details
+
+# Make sure you review the "USER PARAMETERS"
+# sections before executing this code.
+
 
 # Import necessary packages
 import paho.mqtt.client as mqtt # MQTT
@@ -9,18 +14,29 @@ import time # To time sending intervals
 from xware_lib_functions import *
 from xware_lib_om2m import *
 
-# =================================
-# PARAMETERS
 
-# Simulated acquisition folder
-csvLocation = '/home/pi/Documents/gateway_buffer'
 
-# Log files location
-logLocation = '/home/pi/Documents/python'
+# ==================================================================
+# USER PARAMETERS:
+# Change these to your liking
+
+# Acquisition folder:
+# The resulting CSV files will be stored here
+csvLocation = 'C:/Users/User/XWare/csv_files'
+
+# Log files location:
+# Log files (useful in case of a crash) will be stored here
+logLocation = 'C:/Users/User/XWare/logs'
 
 # CSV storage parameters
+# Define the decimal places that time and values will have
 timePrecision = 6
 valuePrecision = 5
+
+
+# =================================
+# ADVANCED PARAMETERS:
+# Do not change these unless you know what you are doing
 
 # OM2M parameters
 serverCSE = 'in-cse'
@@ -34,12 +50,18 @@ authOM2M = 'admin:admin'
 waitTime = 0.05
 
 
+
+# ==================================================================
+# XWARE CODE
+
+# This is the XWare code.
+# You should not have to change anything beyond this point.
+
 # ======================
 # SET UP FLAGS AND VARIABLES
 
 # Variables
 startTimers = {}
-csvNumber = 0
 
 #====================
 # Check for directory existance and start LOG
@@ -75,10 +97,11 @@ while 1:
     # If starting, prompt to delete old apps
     if starting:
         if numOfDevices > 0:
-            input('Press Return to delete old OM2M data and continue...')
-            print('')
+            input('Press Return to delete old OM2M data and continue.')
             for deviceName in devicesList:
                 deleteApplicationREST(authOM2M,ipOM2M,serverCSE,serverName,deviceName)
+            print('Old data removed! You may start XWare (gateway) in your device(s).')
+            print('')
         devicesList = []
         starting = 0
 
@@ -141,30 +164,54 @@ while 1:
             startTimers[deviceName]['currentIndex'] += 1
             currentIndex = startTimers[deviceName]['currentIndex']
             startTime = startTimers[deviceName][currentIndex]
+            print(startTime)
 
             # Flight time
             timerFlight = time.time() - startTime
 
+            # Set time delta
+            deltaTime = 1/F
+
+            # Start time counter
+            currentTime = 0
+
+            # File name for new CSV
+            dateStr = time.strftime('%Y%m%dT%H%M%S',time.localtime(startTime))
+            decimalsStr = str(int((startTime-int(startTime))*(10**2)))
+            fileName = deviceName + '_' + dateStr + decimalsStr + '.csv'
+
             # Create new CSV
-            fileName = 'sample_' + str(csvNumber) + '_' + deviceName + '.csv'
             file = open(csvLocation + '/' + fileName, 'w')
             file.write('ID,,,\n')
 
-            # Time delta
-            deltaTime = 1/F
-            currentTime = 0
+            # Separte sensor tags (if there are multiple)
+            sensorTagList = sensorTag.split(',')
 
+            # ==============
             # Create each CSV line
             for valueStrRaw in valueBuffer:
+                # Create time for this measurement
                 timeUnix = preciseUnixTime(startTime,0,currentTime,timePrecision,string=1)
-                valueStr = float(valueStrRaw)*valueConversion
-                csvLine = csvFormatLine(timeUnix,deviceTag,sensorTag,valueStr,valuePrecision)
-                file.write(csvLine)
+                # Separate values (if there are multiple)
+                valueStringList = valueStrRaw.split(',')
+                # Convert values to numbers, considering the conversion factor
+                valueListConverted = []
+                for singleValue in valueStringList:
+                    valueListConverted.append(float(singleValue)*valueConversion)
+                # Check that the length of the sensor tag list and sensor values is the same
+                if len(sensorTagList) != len(valueListConverted):
+                    print("Error: There are " + str(len(sensorTagList)) + "sensor tags but only " + len(valueListConverted) + "values.")
+                # Cycle through the different tags and values, and save to csv
+                for singleTag, singleValue in zip(sensorTagList, valueListConverted):
+                    # Join everything into one text
+                    csvLine = csvFormatLine(timeUnix,deviceTag,singleTag,singleValue,valuePrecision)
+                    # Write text to file
+                    file.write(csvLine)
+                # Update time
                 currentTime += deltaTime
 
             # End CSV
             file.close()
-            csvNumber += 1
             printAndLog(deviceName + ' CSV file created',fullLogLoc)
 
             # CSVTime

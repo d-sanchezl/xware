@@ -1,4 +1,5 @@
 # Useful functions for OM2M and MQTT in XWare
+# See Github repo (github.com/d-sanchezl/xware) for license details
 
 # Some functions adapted from jairoseros' work:
 # https://github.com/SELF-Software-Evolution-Lab/Adaptive-Architecture-for-Transient-IoT-Systems
@@ -324,7 +325,7 @@ def deleteApplicationREST(auth="admin:admin",ip="127.0.0.1:8080",serverCSE="in-c
     header = {"X-M2M-Origin": auth, "Accept": "application/json"}
     url = "http://"+ip+"/~/"+serverCSE+"/"+serverName+"/"+appName
     response = requests.delete(url, headers=header)
-    
+
 
 # ===========================================
 # Get the last URL items for a list of URL's

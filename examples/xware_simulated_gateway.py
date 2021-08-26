@@ -1,9 +1,6 @@
 # MQTT to OM2M gateway device client with simulated aquisition
 # See Github repo (github.com/d-sanchezl/xware) for license details
 
-# This code is made to be executed in each Gateway device. It is able to capture
-# sensor data for one or more sensors in a device, and send it to a Server.
-
 # Make sure you review the "USER PARAMETERS" and "DATA AQUISITION FUNCTION"
 # sections before executing this code.
 
@@ -103,11 +100,57 @@ maxWaitTime = 6
 # ==========
 # Code:
 
-# Example function for 3 values
+# This example code reads data from a file or files in a "samplesLocation"
+# folder. The timestamps in the files are ignored, and only sensor values
+# are read. An example file that can be read this way ('simulated_input.txt')
+# can be found in the repo.
+
+# Create and manage directories
+import os
+
+# Simulated acquisition parameters
+samplesLocation = "/home/pi/Documents/simulated_acquisition"
+
+# Create file list
+fileList = [(samplesLocation+"/"+i) for i in os.listdir(samplesLocation)]
+currentFileIndex = 0
+currentLineIndex = 0
+lineList = []
+
+# Read next value from the txt files
+def readOneValue():
+    global fileList
+    global currentFileIndex
+    global currentLineIndex
+    global lineList
+    # Read new file if necessary
+    if not(lineList):
+        file = open(fileList[currentFileIndex], 'r')
+        contents = file.read()
+        lineList = contents.splitlines()
+        file.close()
+    # Read the corresponding line
+    currentLine = lineList[currentLineIndex]
+    # Cycle to next valid line/file
+    currentLineIndex += 1
+    if currentLineIndex >= len(lineList):
+        currentFileIndex += 1
+        currentLineIndex = 0
+        lineList = []
+        if currentFileIndex >= len(fileList):
+            currentFileIndex = 0
+    # Extract value from full string
+    tabPos = currentLine.find('\t')
+    if tabPos == -1:
+        tabPos = currentLine.find(',')
+    valueStr = currentLine[tabPos+1:]
+    return valueStr
+
+# Read 3 values to simulate data from 3 sensors
 def getValueFromSensor():
-    x = '123.456'
-    y = '-789.012'
-    z = '345.678'
+    x = readOneValue()
+    y = readOneValue()
+    z = readOneValue()
     return x + ',' + y + ',' + z
 
 

@@ -1,4 +1,5 @@
 # Miscellaneous functions used in XWare
+# See Github repo (github.com/d-sanchezl/xware) for license details
 
 # Import necessary packages
 import os
